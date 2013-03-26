@@ -1,7 +1,7 @@
 <?php
 namespace CentralApps\Authentication\Providers;
 
-class TwitterProvider implements OAuthProviderInterface
+class FacebookProvider implements OAuthProviderInterface
 {
     protected $request;
     protected $userFactory;
@@ -19,6 +19,8 @@ class TwitterProvider implements OAuthProviderInterface
     protected $callbackPage;
     protected $justSet = false;
     
+    protected $token = null;
+    
     protected $facebookClient = null;
     
     
@@ -34,8 +36,16 @@ class TwitterProvider implements OAuthProviderInterface
         if(is_array($request) && array_key_exists('session', $request) && is_array($request['session'])) {
             $this->session = $request['session'];
         }
-        
-        $this->lookupPersistantOAuthTokenDetails();
+    }
+    
+    public function setToken($token)
+    {
+        $this->token = $token;
+    }
+    
+    public function getToken()
+    {
+        return $this->token;
     }
     
     public function setAppId($app_id)
@@ -60,10 +70,11 @@ class TwitterProvider implements OAuthProviderInterface
     
     public function getFacebookClient()
     {
-        
+        return new \Facebook(array(
+          'appId'  => $this->appId,
+          'secret' => $this->appSecret,
+        ));
     }
-    
-    
     
     public function hasAttemptedToLoginWithProvider()
     {
@@ -85,7 +96,7 @@ class TwitterProvider implements OAuthProviderInterface
     // TODO: use this to remove the repetition from below
     public function verifyTokens()
     {
-        
+        return (is_null($this->handleRequest())) ? false : true;
     }
     
     public function getExternalUsername()
@@ -95,22 +106,65 @@ class TwitterProvider implements OAuthProviderInterface
     
     public function handleAttach()
     {
+        if(!is_null($this->userGateway->user)) {
+            $user_data = $this->handleRequest();
+            if(!is_null($user_data)) {
+                try {
+                 $this->userGateway->attachTokensFromProvider($this);
+                 return true;
+                } catch (\Exception $e) {
+                    return false;
+                }
+            }
+        }
         return false;
     }
     
     public function handleRegister()
     {
+        if(is_null($this->userGateway->user)) {
+            $user_data = $this->handleRequest();
+            if(!is_null($user_data)) {
+                $this->userGateway->registerUserFromProvider($this);
+            }
+        }
         return false;
     }
     
     public function processLoginAttempt()
-    {       
-        return null;
+    {
+        if(is_null($this->userGateway->user)) {    
+            $user_data = $this->handleRequest();
+            if(!is_null($user_data)) {
+                try {
+                     return $this->userFactory->getFromProvider($this);
+                } catch (\Exception $e) {
+                    return null;
+                }
+            }
+        }
+        return false;
     }
     
-    protected function handleRequest()
+    public function handleRequest()
     {
-        
+        $facebook = $this->getFacebookClient();
+        if(!is_null($this->token)) {
+            $facebook->setAccessToken($this->token);
+        }
+        $user = $facebook->getUser();
+        if($user) {
+            try {
+                $data = $facebook->api('/me');
+                $this->externalId = $data['id'];
+                $this->externalUsername = (array_key_exists('username', $data)) ? $data['username'] : null;
+                $this->externalEmail = (array_key_exists('email', $data)) ? $data['email'] : null;
+                return $data;
+            } catch(\Exception $e) {
+                return null;
+            }
+        }
+        return null;
     }
     
     public function logout()
@@ -160,7 +214,7 @@ class TwitterProvider implements OAuthProviderInterface
     protected function buildRedirectUrlAndSaveState($state)
     {
         $this->setPersistantData($state);
-        return $this->callbackPage;
+        return $this->getFacebookClient()->getLoginUrl();
     }
     
     public function setPersistantData($state)
