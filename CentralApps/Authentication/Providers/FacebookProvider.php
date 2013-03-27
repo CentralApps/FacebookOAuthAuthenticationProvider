@@ -12,6 +12,7 @@ class FacebookProvider implements OAuthProviderInterface
     protected $externalId;
     protected $externalUsername = null;
     protected $externalEmail = null;
+    protected $externalDisplayName = null;
     
     protected $appId;
     protected $appSecret;
@@ -104,6 +105,11 @@ class FacebookProvider implements OAuthProviderInterface
         return $this->externalUsername;
     }
     
+    public function getExternalDisplayName()
+    {
+        return $this->externalDisplayName;
+    }
+    
     public function handleAttach()
     {
         if(!is_null($this->userGateway->user)) {
@@ -159,6 +165,7 @@ class FacebookProvider implements OAuthProviderInterface
                 $this->externalId = $data['id'];
                 $this->externalUsername = (array_key_exists('username', $data)) ? $data['username'] : null;
                 $this->externalEmail = (array_key_exists('email', $data)) ? $data['email'] : null;
+                $this->externalDisplayName = (array_key_exists('name', $data)) ? $data['name'] : null;
                 return $data;
             } catch(\Exception $e) {
                 return null;
