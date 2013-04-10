@@ -16,6 +16,7 @@ class FacebookProvider implements OAuthProviderInterface
     
     protected $appId;
     protected $appSecret;
+    protected $scope;
     
     protected $callbackPage;
     protected $justSet = false;
@@ -30,6 +31,7 @@ class FacebookProvider implements OAuthProviderInterface
         $this->request = $request;
         $this->userFactory = $user_factory;
         $this->userGateway = $user_gateway;
+        $this->scope = '';
         
         if(is_array($request) && array_key_exists('get', $request) && is_array($request['get'])) {
             $this->get = $request['get'];
@@ -68,6 +70,16 @@ class FacebookProvider implements OAuthProviderInterface
     {
         return $this->appSecret;
     }
+
+    public function setScope($scope)
+    {
+        $this->scope = $scope;
+    }
+
+    public function getScope()
+    {
+        return $this->scope;
+    }
     
     public function getFacebookClient()
     {
@@ -92,8 +104,7 @@ class FacebookProvider implements OAuthProviderInterface
         return ($this->getPersistantData() == 'register');
     }
     
-    
-    
+
     // TODO: use this to remove the repetition from below
     public function verifyTokens()
     {
@@ -221,7 +232,7 @@ class FacebookProvider implements OAuthProviderInterface
     protected function buildRedirectUrlAndSaveState($state)
     {
         $this->setPersistantData($state);
-        return $this->getFacebookClient()->getLoginUrl();
+        return $this->getFacebookClient()->getLoginUrl(array('scope' => $this->scope));
     }
     
     public function setPersistantData($state)
@@ -246,5 +257,4 @@ class FacebookProvider implements OAuthProviderInterface
             unset($_SESSION['fb_callback_action']);
         }
     }
-
 }
