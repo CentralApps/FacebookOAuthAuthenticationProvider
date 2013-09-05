@@ -251,6 +251,11 @@ class FacebookProvider implements OAuthProviderInterface
         $this->callbackPage = $callback_page;
     }
     
+    public function getExternalEmail()
+    {
+        return $this->externalEmail;
+    }
+    
     public function __destruct()
     {
         if(!$this->justSet) {
